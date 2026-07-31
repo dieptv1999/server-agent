@@ -47,6 +47,8 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
+exec </dev/tty
+
 # ---- load old .env as defaults ----
 declare -A OLD_ENV
 if [ -f "$ENV_FILE" ]; then
