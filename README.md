@@ -26,7 +26,7 @@ GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o server-agent .
 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o server-agent .
 scp server-agent root@vps:/usr/local/bin/
 rsync -avz --progress server-agent root@221.132.xx.xxx:~/server-agent/
-rsync -avz --progress .env root@221.132.xx.xxx:~/server-agent/
+rsync -avz --progress .env.production root@221.132.xx.xxx:~/server-agent/.env
 rsync -avz --progress server-agent.service root@221.132.xx.xxx:~/server-agent/
 
 # 2. Trên VPS: tạo config
@@ -39,6 +39,7 @@ SERVER_NAME=web-01
 EOF
 
 # 3. Cài systemd service
+chmod +x service-agent
 cp server-agent.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now server-agent
