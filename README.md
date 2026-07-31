@@ -5,7 +5,7 @@ Gửi metrics VPS về dpm-backend mỗi 5s.
 ## Cài đặt (Linux)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/dieptv1999/server-agent/main/install.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/dieptv1999/server-agent/main/install.sh -o install.sh && sudo bash install.sh
 ```
 
 Script sẽ hỏi interactive: `API_URL`, `SECRET`, `SERVER_NAME` (tuỳ chọn), `DATABASE_URL` (tuỳ chọn). Tự động download binary + systemd service, enable & start.
@@ -14,7 +14,7 @@ Chạy lại lần 2 → cập nhật binary, reload service.
 
 Tuỳ chọn thư mục cài:
 ```bash
-curl ... | sudo bash -s -- -d /opt/server-agent
+curl ... -o install.sh && sudo bash install.sh -d /opt/server-agent
 ```
 
 ## Chạy dev

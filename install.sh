@@ -47,7 +47,14 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-exec </dev/tty
+# ---- check tty (không cho dùng pipe) ----
+if [ ! -t 0 ]; then
+    echo -e "${RED}Không dùng pipe (curl | bash). Hãy chạy 2 bước:${NC}"
+    echo ""
+    echo -e "  ${BOLD}curl -sSL ${RAW_BASE}/install.sh -o install.sh && sudo bash install.sh${NC}"
+    echo ""
+    exit 1
+fi
 
 # ---- load old .env as defaults ----
 declare -A OLD_ENV
@@ -106,14 +113,22 @@ echo -e "${GREEN}.env đã được ghi → ${ENV_FILE}${NC}"
 # ---- download binary ----
 echo ""
 echo -e "${CYAN}Đang tải binary...${NC}"
-curl -sSL -o "$BIN_PATH" "${RAW_BASE}/server-agent"
+HTTP_CODE=$(curl -sSL -w "%{http_code}" -o "$BIN_PATH" "${RAW_BASE}/server-agent")
+if [ "$HTTP_CODE" != "200" ]; then
+    echo -e "${RED}Lỗi tải binary (HTTP ${HTTP_CODE}). Đã push binary lên GitHub chưa?${NC}"
+    exit 1
+fi
 chmod +x "$BIN_PATH"
 echo -e "${GREEN}Binary đã tải → ${BIN_PATH}${NC}"
 
 # ---- download & install service ----
 echo ""
 echo -e "${CYAN}Đang tải systemd service...${NC}"
-curl -sSL -o /tmp/server-agent.service "${RAW_BASE}/server-agent.service"
+HTTP_CODE=$(curl -sSL -w "%{http_code}" -o /tmp/server-agent.service "${RAW_BASE}/server-agent.service")
+if [ "$HTTP_CODE" != "200" ]; then
+    echo -e "${RED}Lỗi tải service file (HTTP ${HTTP_CODE}).${NC}"
+    exit 1
+fi
 sed -i "s|__INSTALL_DIR__|${INSTALL_DIR}|g" /tmp/server-agent.service
 cp /tmp/server-agent.service "$SVC_PATH"
 rm -f /tmp/server-agent.service
