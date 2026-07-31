@@ -5,6 +5,8 @@ Gửi metrics VPS về dpm-backend mỗi 5s.
 ## Cài đặt (Linux)
 
 ```bash
+mkdir server-agent
+cd server-agent
 curl -sSL https://raw.githubusercontent.com/dieptv1999/server-agent/main/install.sh -o install.sh && sudo bash install.sh
 ```
 
