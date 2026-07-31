@@ -113,22 +113,22 @@ echo -e "${GREEN}.env đã được ghi → ${ENV_FILE}${NC}"
 # ---- download binary ----
 echo ""
 echo -e "${CYAN}Đang tải binary...${NC}"
-HTTP_CODE=$(curl -sSL -w "%{http_code}" -o "$BIN_PATH" "${RAW_BASE}/server-agent")
-if [ "$HTTP_CODE" != "200" ]; then
-    echo -e "${RED}Lỗi tải binary (HTTP ${HTTP_CODE}). Đã push binary lên GitHub chưa?${NC}"
+[ -w "$INSTALL_DIR" ] || { echo -e "${RED}Không ghi được vào ${INSTALL_DIR}${NC}"; exit 1; }
+curl -fSL -o "$BIN_PATH" "${RAW_BASE}/server-agent" || {
+    echo -e "${RED}Lỗi tải binary${NC}"
     exit 1
-fi
+}
+[ -s "$BIN_PATH" ] || { echo -e "${RED}Binary trống, tải thất bại${NC}"; exit 1; }
 chmod +x "$BIN_PATH"
 echo -e "${GREEN}Binary đã tải → ${BIN_PATH}${NC}"
 
 # ---- download & install service ----
 echo ""
 echo -e "${CYAN}Đang tải systemd service...${NC}"
-HTTP_CODE=$(curl -sSL -w "%{http_code}" -o /tmp/server-agent.service "${RAW_BASE}/server-agent.service")
-if [ "$HTTP_CODE" != "200" ]; then
-    echo -e "${RED}Lỗi tải service file (HTTP ${HTTP_CODE}).${NC}"
+curl -fSL -o /tmp/server-agent.service "${RAW_BASE}/server-agent.service" || {
+    echo -e "${RED}Lỗi tải service file${NC}"
     exit 1
-fi
+}
 sed -i "s|__INSTALL_DIR__|${INSTALL_DIR}|g" /tmp/server-agent.service
 cp /tmp/server-agent.service "$SVC_PATH"
 rm -f /tmp/server-agent.service
