@@ -25,6 +25,9 @@ GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o server-agent .
 # 1. Build & copy
 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o server-agent .
 scp server-agent root@vps:/usr/local/bin/
+rsync -avz --progress server-agent root@221.132.xx.xxx:~/server-agent/
+rsync -avz --progress .env root@221.132.xx.xxx:~/server-agent/
+rsync -avz --progress server-agent.service root@221.132.xx.xxx:~/server-agent/
 
 # 2. Trên VPS: tạo config
 mkdir -p /etc/server-agent /var/lib/server-agent
