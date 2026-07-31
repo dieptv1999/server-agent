@@ -112,6 +112,10 @@ echo -e "${GREEN}.env đã được ghi → ${ENV_FILE}${NC}"
 
 # ---- download binary ----
 echo ""
+echo -e "${CYAN}Đang dừng service cũ (nếu có)...${NC}"
+systemctl stop server-agent 2>/dev/null || true
+sleep 1
+
 echo -e "${CYAN}Đang tải binary...${NC}"
 [ -w "$INSTALL_DIR" ] || { echo -e "${RED}Không ghi được vào ${INSTALL_DIR}${NC}"; exit 1; }
 curl -fSL -o "$BIN_PATH" "${RAW_BASE}/server-agent" || {
@@ -138,14 +142,8 @@ echo -e "${GREEN}Service đã cài → ${SVC_PATH}${NC}"
 echo ""
 systemctl daemon-reload
 systemctl enable server-agent
-
-if systemctl is-active --quiet server-agent; then
-    echo -e "${YELLOW}Đang khởi động lại service...${NC}"
-    systemctl restart server-agent
-else
-    echo -e "${GREEN}Đang khởi động service...${NC}"
-    systemctl start server-agent
-fi
+echo -e "${GREEN}Đang khởi động service...${NC}"
+systemctl start server-agent
 
 sleep 1
 
