@@ -114,7 +114,7 @@ echo -e "${GREEN}.env đã được ghi → ${ENV_FILE}${NC}"
 echo ""
 echo -e "${CYAN}Đang dừng service cũ (nếu có)...${NC}"
 systemctl stop server-agent 2>/dev/null || true
-sleep 1
+sleep 3
 
 echo -e "${CYAN}Đang tải binary...${NC}"
 [ -w "$INSTALL_DIR" ] || { echo -e "${RED}Không ghi được vào ${INSTALL_DIR}${NC}"; exit 1; }
