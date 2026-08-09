@@ -10,13 +10,21 @@ import (
 	_ "github.com/lib/pq"
 )
 
+type ReplicationSlot struct {
+	SlotName  string `json:"slot_name"`
+	Active    bool   `json:"active"`
+	WalStatus string `json:"wal_status"`
+	LagMb     int64  `json:"lag_mb"`
+}
+
 type PostgresStatus struct {
-	Running           bool   `json:"running"`
-	IsMaster          bool   `json:"is_master"`
-	SyncState         string `json:"sync_state"`
-	ReplicationLagMs  int64  `json:"replication_lag_ms"`
-	ActiveConnections int    `json:"active_connections"`
-	MaxConnections    int    `json:"max_connections"`
+	Running           bool              `json:"running"`
+	IsMaster          bool              `json:"is_master"`
+	SyncState         string            `json:"sync_state"`
+	ReplicationLagMs  int64             `json:"replication_lag_ms"`
+	ActiveConnections int               `json:"active_connections"`
+	MaxConnections    int               `json:"max_connections"`
+	ReplicationSlots  []ReplicationSlot `json:"replication_slots"`
 }
 
 type PostgresCollector struct {
@@ -102,6 +110,29 @@ func (p *PostgresCollector) Collect() *PostgresStatus {
 					status.ReplicationLagMs = lagMs
 				}
 			}
+		}
+
+		slotRows, err := p.db.Query(`
+			SELECT slot_name,
+			       active,
+			       COALESCE(wal_status, 'unknown'),
+			       COALESCE(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn), 0)::bigint / (1024 * 1024)
+			FROM pg_replication_slots
+			WHERE slot_type = 'physical'`)
+		if err != nil {
+			log.Printf("pg_replication_slots failed: %v", err)
+		} else {
+			defer slotRows.Close()
+			var slots []ReplicationSlot
+			for slotRows.Next() {
+				var s ReplicationSlot
+				if err := slotRows.Scan(&s.SlotName, &s.Active, &s.WalStatus, &s.LagMb); err != nil {
+					log.Printf("scan replication slot row failed: %v", err)
+					continue
+				}
+				slots = append(slots, s)
+			}
+			status.ReplicationSlots = slots
 		}
 	} else {
 		status.SyncState = "replica"
