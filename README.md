@@ -51,7 +51,7 @@ SERVER_NAME=web-01
 # DATABASE_URL=postgres://user:pass@localhost:5432/postgres   # tuỳ chọn
 ```
 
-`DATABASE_URL` chỉ cần nếu muốn theo dõi PostgreSQL. Nên tạo user riêng:
+`DATABASE_URL` chỉ cần nếu muốn theo dõi PostgreSQL. Nên tạo user riêng (xem `sql/monitor_role.sql`):
 
 ```sql
 -- PG 14+
@@ -62,6 +62,20 @@ GRANT pg_read_all_stats TO server_agent_monitor;
 CREATE ROLE server_agent_monitor WITH LOGIN PASSWORD 'mật_khẩu_mạnh';
 GRANT pg_monitor TO server_agent_monitor;
 ```
+
+Lưu ý:
+- Role `server_agent_monitor` chỉ đọc stats/catalog, **không đọc được dữ liệu user table**.
+- Trên PG 10-13, `pg_monitor` đủ cho `pg_stat_replication`, nhưng `pg_replication_slots`
+  vẫn cần superuser → khuyến nghị dùng PG14+.
+
+## Metric PostgreSQL
+
+Agent gửi lên backend cấu trúc `postgres` gồm:
+- `is_master`, `running`, `active_connections`, `max_connections`.
+- `replicas[]`: danh sách mọi standby từ `pg_stat_replication`
+  (`application_name`, `state`, `sync_state`, `write_lag_ms`, `flush_lag_ms`, `replay_lag_ms`).
+- `replication_slots[]`: cả slot physical lẫn logical
+  (`slot_name`, `slot_type`, `active`, `wal_status`, `lag_mb`).
 
 ## Tài nguyên
 

@@ -40,6 +40,32 @@ func main() {
 		}
 	}
 
+	hostname, _ := os.Hostname()
+	var linkMon *collector.LinkMonitor
+	if peers := os.Getenv("MONITOR_PEERS"); peers != "" {
+		linkMon = collector.NewLinkMonitor(peers, serverName, hostname)
+		if err := linkMon.Start(); err != nil {
+			log.Printf("link monitor start failed: %v", err)
+			linkMon = nil
+		} else {
+			defer linkMon.Stop()
+			go func() {
+				backoff := time.Second
+				for payload := range linkMon.Out() {
+					if err := r.ReportLink(payload); err != nil {
+						log.Printf("link report error: %v", err)
+						time.Sleep(backoff)
+						if backoff < 60*time.Second {
+							backoff *= 2
+						}
+					} else {
+						backoff = time.Second
+					}
+				}
+			}()
+		}
+	}
+
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 

@@ -37,7 +37,24 @@ func (r *Reporter) Report(m *collector.Metrics) error {
 		return fmt.Errorf("marshal: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", r.apiURL+"/admin/system/server-agent/report", bytes.NewReader(body))
+	return r.post("/admin/system/server-agent/report", body)
+}
+
+func (r *Reporter) ReportLink(m collector.LinkReport) error {
+	if r.serverName != "" {
+		m.ServerName = r.serverName
+	}
+
+	body, err := json.Marshal(m)
+	if err != nil {
+		return fmt.Errorf("marshal: %w", err)
+	}
+
+	return r.post("/admin/system/server-agent/link", body)
+}
+
+func (r *Reporter) post(path string, body []byte) error {
+	req, err := http.NewRequest("POST", r.apiURL+path, bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("new request: %w", err)
 	}
