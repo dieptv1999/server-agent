@@ -10,7 +10,7 @@ cd server-agent
 curl -sSL https://raw.githubusercontent.com/dieptv1999/server-agent/main/install.sh -o install.sh && sudo bash install.sh
 ```
 
-Script sẽ hỏi interactive: `API_URL`, `SECRET`, `SERVER_NAME` (tuỳ chọn), `DATABASE_URL` (tuỳ chọn). Tự động download binary + systemd service, enable & start.
+Script sẽ hỏi interactive: `API_URL`, `SECRET`, `SERVER_NAME` (tuỳ chọn), `DATABASE_URL` (tuỳ chọn), `MONITOR_PEERS` (tuỳ chọn, giám sát liên kết). Tự động download binary + systemd service, enable & start.
 
 Chạy lại lần 2 → cập nhật binary, reload service.
 
@@ -49,6 +49,7 @@ API_URL=http://localhost:7001/dpm/v1
 SECRET=dhn_server_agent_2025
 SERVER_NAME=web-01
 # DATABASE_URL=postgres://user:pass@localhost:5432/postgres   # tuỳ chọn
+# MONITOR_PEERS=web-02:10.0.0.2,db-01:10.0.0.3                # tuỳ chọn
 ```
 
 `DATABASE_URL` chỉ cần nếu muốn theo dõi PostgreSQL. Nên tạo user riêng (xem `sql/monitor_role.sql`):
@@ -67,6 +68,28 @@ Lưu ý:
 - Role `server_agent_monitor` chỉ đọc stats/catalog, **không đọc được dữ liệu user table**.
 - Trên PG 10-13, `pg_monitor` đủ cho `pg_stat_replication`, nhưng `pg_replication_slots`
   vẫn cần superuser → khuyến nghị dùng PG14+.
+
+## Giám sát liên kết (UDP heartbeat)
+
+Mỗi agent vừa gửi vừa lắng nghe UDP `:9999` để giám sát kết nối tới các server khác (full-mesh).
+Bật bằng cách khai báo danh sách peer trong `.env` — **bỏ trống thì tính năng tắt hoàn toàn**.
+
+```env
+# [name:]ip, cách nhau dấu phẩy; name tuỳ chọn
+MONITOR_PEERS=web-02:10.0.0.2,db-01:10.0.0.3
+HEARTBEAT_PORT=9999            # UDP port (default 9999)
+HEARTBEAT_INTERVAL_MS=1000     # gửi mỗi 1s
+HEARTBEAT_TIMEOUT_MS=3000      # mất 3s không gói -> down
+HEARTBEAT_KEEPALIVE_S=60       # keepalive tổng kết
+HEARTBEAT_DOWN_CONFIRM_MS=5000 # xác nhận down (chống blip)
+```
+
+**Yêu cầu hạ tầng:** mở UDP `${HEARTBEAT_PORT}` (mặc định 9999) **2 chiều** giữa các VPS.
+Nếu không mở, link sẽ báo `down` sai.
+
+Cơ chế: agent chỉ giữ state machine + rollup availability 12h trong RAM và chỉ đẩy lên backend
+khi có chuyển trạng thái (kèm keepalive 60s) → gần như 0 ops; có chống bão dữ liệu
+(hysteresis, flapping suppression, coalescing, rate limit, backoff).
 
 ## Metric PostgreSQL
 

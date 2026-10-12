@@ -97,17 +97,28 @@ API_URL=$(prompt "API_URL" "API URL (vd: https://be.dhn.io.vn/dpm/v1)" "yes")
 SECRET=$(prompt "SECRET" "Secret key (phải khớp SERVER_AGENT_SECRET ở backend)" "yes")
 SERVER_NAME=$(prompt "SERVER_NAME" "Tên server hiển thị (bỏ trống = hostname)" "no")
 DATABASE_URL=$(prompt "DATABASE_URL" "PostgreSQL DSN (bỏ trống nếu không theo dõi PG)" "no")
+MONITOR_PEERS=$(prompt "MONITOR_PEERS" "Giám sát liên kết: IP peer (vd: web-02:10.0.0.2,db-01:10.0.0.3; bỏ trống = tắt)" "no")
+
+HEARTBEAT_PORT=""
+if [ -n "$MONITOR_PEERS" ]; then
+    HEARTBEAT_PORT=$(prompt "HEARTBEAT_PORT" "UDP port cho heartbeat" "no")
+    HEARTBEAT_PORT="${HEARTBEAT_PORT:-9999}"
+fi
 
 # ---- create dirs ----
 mkdir -p "$INSTALL_DIR"
 
 # ---- write .env ----
-cat > "$ENV_FILE" << EOF
-API_URL=${API_URL}
-SECRET=${SECRET}
-SERVER_NAME=${SERVER_NAME}
-DATABASE_URL=${DATABASE_URL}
-EOF
+{
+    echo "API_URL=${API_URL}"
+    echo "SECRET=${SECRET}"
+    echo "SERVER_NAME=${SERVER_NAME}"
+    echo "DATABASE_URL=${DATABASE_URL}"
+    if [ -n "$MONITOR_PEERS" ]; then
+        echo "MONITOR_PEERS=${MONITOR_PEERS}"
+        echo "HEARTBEAT_PORT=${HEARTBEAT_PORT}"
+    fi
+} > "$ENV_FILE"
 echo -e "${GREEN}.env đã được ghi → ${ENV_FILE}${NC}"
 
 # ---- download binary ----
@@ -153,6 +164,11 @@ echo -e "${GREEN}${BOLD}  Cài đặt hoàn tất!${NC}"
 echo ""
 systemctl status server-agent --no-pager -l || true
 echo ""
+if [ -n "$MONITOR_PEERS" ]; then
+    echo -e "${YELLOW}${BOLD}Lưu ý:${NC}${YELLOW} đã bật giám sát liên kết (MONITOR_PEERS).${NC}"
+    echo -e "${YELLOW}      Cần mở UDP ${HEARTBEAT_PORT} 2 chiều giữa các VPS, nếu không link sẽ báo down sai.${NC}"
+    echo ""
+fi
 echo -e "${CYAN}Logs:${NC} journalctl -u server-agent -f"
 echo -e "${CYAN}Stop:${NC} systemctl stop server-agent"
 echo -e "${CYAN}Start:${NC} systemctl start server-agent"
