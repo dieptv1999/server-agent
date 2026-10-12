@@ -63,11 +63,12 @@ type LinkMonitor struct {
 
 	conn *net.UDPConn
 
-	mu        sync.Mutex
-	state     map[string]*peerState
-	out       chan LinkReport
-	lastFlush time.Time
-	stop      chan struct{}
+	mu         sync.Mutex
+	state      map[string]*peerState
+	seenSource map[string]bool
+	out        chan LinkReport
+	lastFlush  time.Time
+	stop       chan struct{}
 }
 
 func NewLinkMonitor(peersRaw, ownName, hostname string) *LinkMonitor {
@@ -82,6 +83,7 @@ func NewLinkMonitor(peersRaw, ownName, hostname string) *LinkMonitor {
 		ownName:       ownName,
 		hostname:      hostname,
 		state:         make(map[string]*peerState),
+		seenSource:    make(map[string]bool),
 		out:           make(chan LinkReport, 16),
 		stop:          make(chan struct{}),
 	}
@@ -172,6 +174,10 @@ func (m *LinkMonitor) recvLoop() {
 		m.mu.Lock()
 		st := m.state[peerIP]
 		if st == nil {
+			if !m.seenSource[peerIP] {
+				m.seenSource[peerIP] = true
+				log.Printf("link: nhận gói UDP từ %s (name=%q) NHƯNG không khớp peer nào trong MONITOR_PEERS -> bỏ. Kiểm tra lại IP nguồn thật / cấu hình.", peerIP, hb.Name)
+			}
 			m.mu.Unlock()
 			continue
 		}
@@ -186,6 +192,7 @@ func (m *LinkMonitor) recvLoop() {
 			st.lastSeen = now
 			st.downConfirmed = false
 			st.registerFlip(now)
+			log.Printf("link: peer %s (%s) UP", peerIP, st.name)
 		}
 		m.mu.Unlock()
 	}
@@ -231,12 +238,13 @@ func (m *LinkMonitor) check() {
 	confirm := time.Duration(m.downConfirmMs) * time.Millisecond
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	for _, st := range m.state {
+	for ip, st := range m.state {
 		if st.online && now.Sub(st.lastSeen) >= timeout {
 			st.online = false
 			st.downSince = now
 			st.downConfirmed = false
 			st.registerFlip(now)
+			log.Printf("link: peer %s (%s) DOWN (mất tín hiệu > %dms)", ip, st.name, m.timeoutMs)
 		}
 		if !st.online && !st.downConfirmed && now.Sub(st.downSince) >= confirm {
 			st.downConfirmed = true
